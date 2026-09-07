@@ -17,6 +17,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<FriendRequest> FriendRequests => Set<FriendRequest>();
 
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<DirectMessage> DirectMessages => Set<DirectMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -104,5 +108,49 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<FriendRequest>()
             .HasIndex(fr => new { fr.SenderId, fr.Status });
+
+        // Conversation -> UserA / UserB (User): dois FKs pra mesma tabela, mesmo padrão de
+        // FriendRequest.Sender/Receiver — WithMany() sem coleção nomeada evita ambiguidade.
+        // Restrict pra não deixar apagar um usuário que ainda tem conversas.
+        modelBuilder.Entity<Conversation>()
+            .HasOne(c => c.UserA)
+            .WithMany()
+            .HasForeignKey(c => c.UserAId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Conversation>()
+            .HasOne(c => c.UserB)
+            .WithMany()
+            .HasForeignKey(c => c.UserBId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Garante no máximo uma conversa por par de usuários (UserAId/UserBId sempre
+        // normalizados pelo menor/maior Guid antes de inserir — ver ConversationRepository).
+        modelBuilder.Entity<Conversation>()
+            .HasIndex(c => new { c.UserAId, c.UserBId })
+            .IsUnique();
+
+        // Índice auxiliar: a query de listagem faz UserAId == userId || UserBId == userId.
+        // O índice único acima já cobre UserAId como prefixo esquerdo; este cobre o lado UserBId.
+        modelBuilder.Entity<Conversation>()
+            .HasIndex(c => c.UserBId);
+
+        // DirectMessage -> Conversation: apagar a conversa apaga suas mensagens.
+        modelBuilder.Entity<DirectMessage>()
+            .HasOne(dm => dm.Conversation)
+            .WithMany(c => c.Messages)
+            .HasForeignKey(dm => dm.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // DirectMessage -> Sender (User): não deixa apagar um usuário que já mandou DM.
+        modelBuilder.Entity<DirectMessage>()
+            .HasOne(dm => dm.Sender)
+            .WithMany()
+            .HasForeignKey(dm => dm.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Busca ordenada do histórico de uma conversa.
+        modelBuilder.Entity<DirectMessage>()
+            .HasIndex(dm => new { dm.ConversationId, dm.CreatedAt });
     }
 }

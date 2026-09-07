@@ -10,6 +10,8 @@ namespace SalaApp.Api.Hubs;
 public class ChatHub(
     IChannelService channelService,
     IMessageService messageService,
+    IConversationService conversationService,
+    IDirectMessageService directMessageService,
     IUserService userService,
     IPresenceTracker presenceTracker,
     IFriendService friendService)
@@ -84,8 +86,37 @@ public class ChatHub(
         await Clients.Group(GroupName(channelId)).SendAsync("ReceiveMessage", dto);
     }
 
+    public async Task JoinConversation(Guid conversationId)
+    {
+        var userId = GetUserId();
+        _ = await conversationService.GetConversationIfParticipantAsync(conversationId, userId)
+            ?? throw new HubException("Conversa não encontrada, você não faz parte dela, ou vocês não são mais amigos.");
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, ConversationGroupName(conversationId));
+    }
+
+    public async Task LeaveConversation(Guid conversationId) =>
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, ConversationGroupName(conversationId));
+
+    /// <summary>
+    /// Espelha SendMessage (canal) pra paridade de API, mas o frontend usa só o POST
+    /// REST (ConversationsController.SendMessage) pra enviar de fato. Os dois caminhos
+    /// chamam IDirectMessageService.CreateAsync, que já persiste E notifica via SignalR
+    /// — este método não faz broadcast de novo, só delega.
+    /// </summary>
+    public async Task SendDirectMessage(Guid conversationId, string content)
+    {
+        var userId = GetUserId();
+        _ = await conversationService.GetConversationIfParticipantAsync(conversationId, userId)
+            ?? throw new HubException("Conversa não encontrada, você não faz parte dela, ou vocês não são mais amigos.");
+
+        await directMessageService.CreateAsync(conversationId, userId, content);
+    }
+
     private Guid GetUserId() =>
         Context.User?.GetUserId() ?? throw new HubException("Usuário não autenticado.");
 
     private static string GroupName(Guid channelId) => $"channel:{channelId}";
+
+    private static string ConversationGroupName(Guid conversationId) => $"conversation:{conversationId}";
 }

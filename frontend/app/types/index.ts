@@ -85,9 +85,9 @@ export interface AppState {
   mobScreen: 'list' | 'chat' | 'thread' | 'voice' | 'profile';
   convos: Record<string, Message[]>;
   /**
-   * Contatos de DM (mock, sem backend real). Começa com os 3 mocks de app/lib/data.ts
-   * e ganha entradas quando o usuário clica "Mensagem" num amigo real (ver
-   * startDirectMessage em app/lib/context.tsx).
+   * Contatos de DM reais (GET /api/conversations ao montar o app — ver
+   * app/lib/conversations.ts). `id` é o Guid do outro usuário (friendId), não o id da
+   * Conversation — ver startDirectMessage e useDirectMessages em app/lib/context.tsx.
    */
   dmContacts: DirectMessage[];
 }

@@ -2,9 +2,11 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AppState, DirectMessage, Message, Server } from '@/app/types';
-import { DMS, INITIAL_CONVOS, formatTime } from './data';
+import { formatTime } from './data';
 import { fetchServers, fetchChannels, fetchMessages, toMessage } from './servers';
+import { fetchConversations } from './conversations';
 import { useChat } from './useChat';
+import { useDirectMessages } from './useDirectMessages';
 import { ensureConnected } from './signalr';
 
 interface AppContextType extends AppState {
@@ -23,8 +25,10 @@ interface AppContextType extends AppState {
   sendReply: (text: string) => void;
   setConvos: (convos: Record<string, Message[]>) => void;
   /**
-   * Adiciona (se ainda não existir, sem duplicar) um amigo real aos contatos de DM
-   * mock e navega pra conversa com ele — usado pelo botão "Mensagem" do FriendsPanel.
+   * Adiciona (se ainda não existir, sem duplicar) um amigo real aos contatos de DM e
+   * navega pra conversa com ele — usado pelo botão "Mensagem" do FriendsPanel. Quem
+   * busca/cria a Conversation de verdade é useDirectMessages, reagindo à mudança de
+   * activeId/friendId.
    */
   startDirectMessage: (friend: { id: string; username: string }) => void;
 }
@@ -33,7 +37,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 /**
  * activeId de canal real é "{serverId}/{channelId}" (Guids reais); DM é
- * "dm/{dmId}" (mock). Devolve o channelId real, ou null se for DM.
+ * "dm/{friendId}". Devolve o channelId real, ou null se for DM.
  */
 function getRealChannelId(activeId: string): string | null {
   if (activeId.startsWith('dm/')) return null;
@@ -41,15 +45,24 @@ function getRealChannelId(activeId: string): string | null {
   return channelId ?? null;
 }
 
+/**
+ * activeId de DM é "dm/{friendId}" — friendId é o Guid do outro usuário, não o id da
+ * Conversation (esse só existe depois do primeiro GET /api/conversations/{friendId},
+ * feito por useDirectMessages). Devolve o friendId, ou null se não for DM.
+ */
+function getFriendId(activeId: string): string | null {
+  return activeId.startsWith('dm/') ? activeId.slice(3) : null;
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>({
     servers: {},
     serverId: '',
-    // Começa em "Diretas" (mock, sempre disponível na hora) porque servers/channels
-    // chegam de forma assíncrona da API — evita a janela de carregamento em que
-    // Sidebar/ChatArea tentariam ler um servidor que ainda não foi buscado.
-    scopeKind: 'dm',
-    activeId: `dm/${DMS[0].id}`,
+    // Começa no painel de Amigos: servers/channels/conversas chegam de forma
+    // assíncrona da API, e não há mais nenhuma DM mock sempre disponível pra abrir de
+    // cara — o painel de Amigos não depende de nenhuma dessas buscas.
+    scopeKind: 'friends',
+    activeId: '',
     draft: '',
     threadKey: null,
     threadDraft: '',
@@ -59,20 +72,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     speaking: 'Bruno',
     mobTab: 'conversas',
     mobScreen: 'list',
-    convos: INITIAL_CONVOS,
-    dmContacts: DMS,
+    convos: {},
+    dmContacts: [],
   });
 
   const realChannelId = getRealChannelId(state.activeId);
   const chat = useChat(realChannelId ?? '');
 
+  const friendId = getFriendId(state.activeId);
+  const dm = useDirectMessages(friendId ?? '');
+
   // Estabelece a conexão SignalR assim que o app carrega (usuário já autenticado —
   // AppProvider só monta depois do AuthGate), independente de qual scope o usuário
   // está navegando. Sem isso, a conexão só abriria via useChat/joinChannel quando um
-  // canal real fosse aberto — e como o app começa em modo DM (mock), presença e
-  // eventos de amigos poderiam nunca funcionar. ensureConnected() é idempotente
-  // (reusa a conexão/promise em andamento), então chamar de novo depois via
-  // joinChannel é seguro.
+  // canal real fosse aberto — e como o app começa no painel de Amigos (sem canal nem
+  // DM ativos), presença e eventos de amigos poderiam nunca funcionar.
+  // ensureConnected() é idempotente (reusa a conexão/promise em andamento), então
+  // chamar de novo depois via joinChannel/joinConversation é seguro.
   useEffect(() => {
     ensureConnected().catch((err) => console.error('Falha ao conectar ao SignalR', err));
   }, []);
@@ -111,8 +127,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Histórico de mensagens do canal real ativo (REST) — DMs continuam vindo só de
-  // INITIAL_CONVOS/sendMessage local, não passam por aqui.
+  // Busca as conversas de DM existentes ao montar (GET /api/conversations), pra a
+  // sidebar de Diretas persistir entre reloads em vez de só mostrar conversas abertas
+  // nesta sessão via "Mensagem" (startDirectMessage).
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchConversations()
+      .then((contacts) => {
+        if (!cancelled) setState((prev) => ({ ...prev, dmContacts: contacts }));
+      })
+      .catch((err) => console.error('Falha ao buscar conversas', err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Histórico de mensagens do canal real ativo (REST) — DM tem seu próprio hook
+  // (useDirectMessages) que já faz o merge histórico+SignalR, não passa por aqui.
   const [channelHistory, setChannelHistory] = useState<Message[]>([]);
 
   useEffect(() => {
@@ -151,6 +184,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelHistory, chat.messages, realChannelId]);
 
+  // Mesmo papel do merge de canal acima, mas pra DM: useDirectMessages já funde
+  // histórico (REST) + mensagens ao vivo (SignalR) internamente, só precisa ser
+  // espelhado em convos[activeId] pro Sidebar/ChatArea lerem do mesmo lugar de sempre.
+  useEffect(() => {
+    if (!friendId) return;
+    setState((prev) => ({
+      ...prev,
+      convos: { ...prev.convos, [prev.activeId]: dm.messages },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dm.messages, friendId]);
+
   const sendMessage = useCallback(
     (text: string) => {
       const trimmed = text.trim();
@@ -162,19 +207,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // DM: continua 100% mock, sem backend.
-      const time = formatTime(new Date());
-      setState((prev) => {
-        const convos = { ...prev.convos };
-        const messages = convos[prev.activeId] || [];
-        convos[prev.activeId] = [
-          ...messages,
-          { id: Date.now().toString(), name: 'Você', time, text: trimmed },
-        ];
-        return { ...prev, convos, draft: '' };
-      });
+      if (friendId) {
+        setState((prev) => ({ ...prev, draft: '' }));
+        dm.sendMessage(trimmed).catch((err) => console.error('Falha ao enviar mensagem direta', err));
+      }
     },
-    [realChannelId, chat]
+    [realChannelId, chat, friendId, dm]
   );
 
   const sendReply = useCallback((text: string) => {

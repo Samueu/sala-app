@@ -21,6 +21,14 @@ export default function ServerList() {
   };
 
   const handleDirectsClick = () => {
+    // Sem nenhuma DM ainda (nunca clicou "Mensagem" em ninguém) — cai no painel de
+    // Amigos em vez de tentar acessar dmContacts[0], que não existe.
+    if (app.dmContacts.length === 0) {
+      app.setScopekind('friends');
+      app.setThreadKey(null);
+      return;
+    }
+
     app.setScopekind('dm');
     app.setActiveId(`dm/${app.dmContacts[0].id}`);
   };

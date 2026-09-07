@@ -21,6 +21,20 @@ export interface ChatMessage {
   parentMessageId: string | null;
 }
 
+/**
+ * Espelha o DirectMessageDto do backend (Dtos/DirectMessageDto.cs) — payload de
+ * ReceiveDirectMessage.
+ */
+export interface DirectChatMessage {
+  id: string;
+  content: string;
+  createdAt: string;
+  conversationId: string;
+  senderId: string;
+  senderUsername: string | null;
+  senderAvatarUrl: string | null;
+}
+
 let connection: signalR.HubConnection | null = null;
 let startPromise: Promise<void> | null = null;
 
@@ -28,6 +42,9 @@ let startPromise: Promise<void> | null = null;
 // um reconnect automático, porque o SignalR troca o ConnectionId nesse caso e o
 // usuário perde todos os grupos silenciosamente sem isso.
 const activeChannels = new Set<string>();
+
+// Mesma ideia de activeChannels, mas pras conversas de DM (grupo "conversation:{id}").
+const activeConversations = new Set<string>();
 
 function getChatConnection(): signalR.HubConnection {
   if (!connection) {
@@ -44,6 +61,14 @@ function getChatConnection(): signalR.HubConnection {
           await connection!.invoke('JoinChannel', channelId);
         } catch (err) {
           console.error(`Falha ao reentrar no canal ${channelId} após reconectar`, err);
+        }
+      }
+
+      for (const conversationId of activeConversations) {
+        try {
+          await connection!.invoke('JoinConversation', conversationId);
+        } catch (err) {
+          console.error(`Falha ao reentrar na conversa ${conversationId} após reconectar`, err);
         }
       }
     });
@@ -97,6 +122,26 @@ export function onReceiveMessage(handler: (message: ChatMessage) => void): () =>
   const conn = getChatConnection();
   conn.on('ReceiveMessage', handler);
   return () => conn.off('ReceiveMessage', handler);
+}
+
+export async function joinConversation(conversationId: string): Promise<void> {
+  const conn = await ensureConnected();
+  await conn.invoke('JoinConversation', conversationId);
+  activeConversations.add(conversationId);
+}
+
+export async function leaveConversation(conversationId: string): Promise<void> {
+  activeConversations.delete(conversationId);
+  const conn = getChatConnection();
+  if (conn.state === signalR.HubConnectionState.Connected) {
+    await conn.invoke('LeaveConversation', conversationId);
+  }
+}
+
+export function onReceiveDirectMessage(handler: (message: DirectChatMessage) => void): () => void {
+  const conn = getChatConnection();
+  conn.on('ReceiveDirectMessage', handler);
+  return () => conn.off('ReceiveDirectMessage', handler);
 }
 
 /**
