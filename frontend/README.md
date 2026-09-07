@@ -48,12 +48,16 @@ sala-app/
 │   │   ├── ChatArea.tsx       # Área principal de chat
 │   │   ├── ThreadPanel.tsx    # Painel de threads
 │   │   ├── VoicePanel.tsx     # Painel de voz (mock)
-│   │   └── VoiceChannel.tsx   # Sala de voz real (LiveKit) — autocontido, não ligado ao mock
+│   │   ├── VoiceChannel.tsx   # Sala de voz real (LiveKit) — autocontido, não ligado ao mock
+│   │   ├── AuthScreen.tsx     # Tela de login/registro (e-mail + senha)
+│   │   └── AuthGate.tsx       # Mostra AuthScreen sem sessão, o app com sessão
 │   ├── lib/
-│   │   ├── context.tsx        # Context React para estado global
+│   │   ├── context.tsx        # Context React para estado global (UI mock)
 │   │   ├── data.ts            # Dados iniciais (servidores, canais, etc)
 │   │   ├── config.ts          # API_BASE_URL do backend
-│   │   ├── auth.ts            # Ponto de extensão pro token de acesso (Supabase, ainda não ligado)
+│   │   ├── auth.ts            # setAccessTokenProvider/getAccessToken (alimentado pelo AuthContext)
+│   │   ├── supabaseClient.ts  # Client Supabase (browser only)
+│   │   ├── AuthContext.tsx    # AuthProvider/useAuth — sessão, user, accessToken, signIn/signUp/signOut
 │   │   ├── signalr.ts         # Client SignalR (conexão com o ChatHub do backend)
 │   │   ├── useChat.ts         # Hook: entra num canal e escuta/envia mensagens em tempo real
 │   │   └── voice.ts           # Busca o token de voz (GET /api/voice/token) no backend
@@ -150,12 +154,11 @@ const { messages, sendMessage, isConnected, error } = useChat(channelId); // cha
 Configuração:
 
 - `NEXT_PUBLIC_API_BASE_URL` (opcional, default `http://localhost:5289`) — URL do backend. Crie um
-  `.env.local` se ele rodar em outro host/porta.
-- **Autenticação**: o `ChatHub` exige o JWT do Supabase Auth (`[Authorize]`), mas o frontend ainda não
-  tem um client Supabase configurado. Até isso existir, chame
-  `setAccessTokenProvider(() => Promise<string | null>)` (exportado de `app/lib/signalr.ts`) com a função
-  que devolve o `access_token` real assim que a autenticação for integrada — sem isso, a conexão
-  autentica com token vazio e o backend responde 401 (esperado, não é bug).
+  `.env.local` (veja `.env.local.example`) se ele rodar em outro host/porta.
+- **Autenticação**: o `ChatHub` exige o JWT do Supabase Auth (`[Authorize]`) — já vem sozinho, via
+  `AuthProvider` (`app/lib/AuthContext.tsx`), que registra o token real assim que o usuário loga (ver
+  seção "Autenticação" abaixo). Sem login, a conexão autentica com token vazio e o backend responde 401
+  (esperado, não é bug).
 
 ## 🎙️ Voz em tempo real (LiveKit)
 
@@ -171,6 +174,28 @@ Assim como o `useChat`, é autocontido e independente da UI mock (`VoicePanel.ts
 Usa os hooks headless do `@livekit/components-react` (`useParticipants`, `useLocalParticipant`,
 `RoomAudioRenderer`) com UI própria em Tailwind — não os componentes pré-estilizados da lib, pra manter o
 visual "Nocturne" do resto do app (mesmo estilo de avatar/destaque de `VoicePanel.tsx`).
+
+## 🔐 Autenticação (Supabase Auth)
+
+`app/lib/supabaseClient.ts` cria o client Supabase (browser only, sem `@supabase/ssr`/`middleware.ts` —
+o app é 100% client-rendered, então não precisa da complexidade de sessão via cookie/SSR). Configure em
+`.env.local` (veja `.env.local.example`):
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable key>   # Project Settings -> API Keys
+```
+
+`app/lib/AuthContext.tsx` expõe `useAuth()` — `{ user, session, accessToken, loading, signIn, signUp,
+signOut }` — e registra o token de sessão automaticamente em `app/lib/auth.ts`
+(`setAccessTokenProvider`), então `useChat`/`VoiceChannel`/`fetchVoiceToken` já autenticam sozinhos
+depois do login, sem nenhuma chamada manual. `app/components/AuthScreen.tsx` (login/registro por
+e-mail+senha) fica na frente do app inteiro via `app/components/AuthGate.tsx`, plugado no
+`app/layout.tsx` — sem sessão, só a tela de login aparece.
+
+Sem OAuth social, recuperação de senha ou confirmação de e-mail customizada por enquanto — só
+e-mail/senha, usando o fluxo padrão do Supabase Auth (se o projeto exigir confirmação de e-mail, o
+cadastro mostra um aviso pra conferir a caixa de entrada).
 
 ## 📝 Notas
 
