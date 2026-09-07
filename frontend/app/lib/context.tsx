@@ -31,6 +31,12 @@ interface AppContextType extends AppState {
    * activeId/friendId.
    */
   startDirectMessage: (friend: { id: string; username: string }) => void;
+  /**
+   * True enquanto a Conversation da DM ativa ainda está sendo buscada/criada
+   * (GET /api/conversations/{friendId}) — usado por ChatArea pra desabilitar o envio
+   * até a conversa estar pronta, em vez de aceitar o clique e descartar a mensagem.
+   */
+  activeDmLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -273,6 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           threadKey: null,
         };
       }),
+    activeDmLoading: friendId ? dm.loading : false,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

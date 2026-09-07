@@ -34,7 +34,13 @@ export default function ChatArea() {
 
   const messages = app.convos[app.activeId] || [];
 
+  // Enquanto a Conversation da DM ativa ainda está sendo buscada/criada
+  // (GET /api/conversations/{friendId}), desabilita o envio em vez de aceitar o clique
+  // e descartar a mensagem em silêncio (ver useDirectMessages.ts).
+  const sendDisabled = app.activeDmLoading || !app.draft.trim();
+
   const handleSend = () => {
+    if (sendDisabled) return;
     app.sendMessage(app.draft);
   };
 
@@ -118,13 +124,14 @@ export default function ChatArea() {
             value={app.draft}
             onChange={(e) => app.setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Escrever em ${conversation.name}`}
-            className="flex-1 min-w-0 border-0 outline-0 bg-transparent text-sm text-text placeholder-neutral-600"
+            disabled={app.activeDmLoading}
+            placeholder={app.activeDmLoading ? 'Carregando conversa…' : `Escrever em ${conversation.name}`}
+            className="flex-1 min-w-0 border-0 outline-0 bg-transparent text-sm text-text placeholder-neutral-600 disabled:cursor-not-allowed"
           />
           <i
             onClick={handleSend}
-            className={`ph ph-paper-plane-right text-base cursor-pointer transition-colors ${
-              app.draft.trim() ? 'text-accent-300' : 'text-neutral-700'
+            className={`ph ph-paper-plane-right text-base transition-colors ${
+              sendDisabled ? 'text-neutral-700 cursor-not-allowed' : 'text-accent-300 cursor-pointer'
             }`}
           ></i>
         </div>

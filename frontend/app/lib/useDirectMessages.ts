@@ -46,6 +46,10 @@ export function useDirectMessages(friendId: string): UseDirectMessagesResult {
         setHistory(detail.messages);
       })
       .catch((err) => {
+        // Loga sempre (não só quando exibido em algum lugar) — sem isso, uma falha aqui
+        // (403 se a amizade não existir mais, erro de rede, etc.) fica 100% invisível e
+        // faz todo clique em "enviar" depois cair no guard silencioso de sendMessage.
+        console.error(`Falha ao buscar/criar conversa com o amigo ${friendId}`, err);
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
@@ -80,7 +84,16 @@ export function useDirectMessages(friendId: string): UseDirectMessagesResult {
 
   const sendMessage = useCallback(async (content: string) => {
     const trimmed = content.trim();
-    if (!trimmed || !conversationIdRef.current) return;
+    if (!trimmed) return;
+
+    if (!conversationIdRef.current) {
+      // Conversa ainda não terminou de carregar (ou falhou ao carregar) — lança em vez
+      // de um `return` silencioso, pra o .catch de context.tsx logar algo em vez de a
+      // mensagem simplesmente desaparecer sem nenhum sinal.
+      const err = new Error('A conversa ainda está carregando — aguarde um instante e tente de novo.');
+      setError(err.message);
+      throw err;
+    }
 
     try {
       await sendDirectMessage(conversationIdRef.current, trimmed);
@@ -89,6 +102,7 @@ export function useDirectMessages(friendId: string): UseDirectMessagesResult {
       // padrão de useChat.sendMessage pra canais.
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      throw err;
     }
   }, []);
 
