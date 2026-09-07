@@ -1,12 +1,13 @@
 'use client';
 
 import { useApp } from '@/app/lib/context';
-import { DMS, initials, tint } from '@/app/lib/data';
+import { initials, tint } from '@/app/lib/data';
 
 export default function Sidebar() {
   const app = useApp();
   const server = app.servers[app.serverId];
   const onDirects = app.scopeKind === 'dm';
+  const DMS = app.dmContacts;
 
   const handleChannelClick = (channelId: string) => {
     const id = `${app.serverId}/${channelId}`;

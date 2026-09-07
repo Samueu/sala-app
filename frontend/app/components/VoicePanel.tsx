@@ -6,8 +6,11 @@ import { initials, tint } from '@/app/lib/data';
 export default function VoicePanel() {
   const app = useApp();
   const server = app.servers[app.serverId];
+  // 'dm' e 'friends' não têm um servidor ativo (app.serverId pode nem estar
+  // setado) — só 'server' usa o server.rooms específico, os outros dois mostram
+  // as salas de todos os servidores.
   const rooms =
-    app.scopeKind === 'dm' ? Object.values(app.servers).flatMap((s) => s.rooms) : server.rooms;
+    app.scopeKind === 'server' ? server.rooms : Object.values(app.servers).flatMap((s) => s.rooms);
 
   const voiceRoom = app.voiceRoom ? rooms.find((r) => r.id === app.voiceRoom) : null;
   const voicePeople = voiceRoom ? voiceRoom.people : [];

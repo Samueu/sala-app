@@ -1,7 +1,6 @@
 'use client';
 
 import { useApp } from '@/app/lib/context';
-import { DMS } from '@/app/lib/data';
 
 export default function ServerList() {
   const app = useApp();
@@ -16,7 +15,15 @@ export default function ServerList() {
 
   const handleDirectsClick = () => {
     app.setScopekind('dm');
-    app.setActiveId(`dm/${DMS[0].id}`);
+    app.setActiveId(`dm/${app.dmContacts[0].id}`);
+  };
+
+  // 'friends' não muda activeId (o FriendsPanel não usa isso pra nada) — setActiveId
+  // é quem normalmente zera threadKey nos outros handlers, então aqui precisa zerar
+  // explicitamente, senão o ThreadPanel de uma thread antiga fica "vazando" visível.
+  const handleFriendsClick = () => {
+    app.setScopekind('friends');
+    app.setThreadKey(null);
   };
 
   return (
@@ -47,6 +54,18 @@ export default function ServerList() {
       })}
 
       <div className="w-4 h-px my-2 bg-neutral-800"></div>
+
+      <div
+        onClick={handleFriendsClick}
+        title="Amigos"
+        className={`w-9 h-9 rounded-md flex items-center justify-center cursor-pointer transition-all ${
+          app.scopeKind === 'friends'
+            ? 'bg-accent-900 text-accent-200 ring-1 ring-accent-700'
+            : 'bg-neutral-900 text-neutral-500 ring-1 ring-neutral-800 hover:ring-accent-500'
+        }`}
+      >
+        <i className="ph ph-users text-base"></i>
+      </div>
 
       <div
         onClick={handleDirectsClick}

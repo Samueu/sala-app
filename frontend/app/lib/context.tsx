@@ -1,14 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { AppState, Message, Server } from '@/app/types';
+import { AppState, DirectMessage, Message, Server } from '@/app/types';
 import { DMS, INITIAL_CONVOS, formatTime } from './data';
 import { fetchServers, fetchChannels, fetchMessages, toMessage } from './servers';
 import { useChat } from './useChat';
+import { ensureConnected } from './signalr';
 
 interface AppContextType extends AppState {
   setActiveId: (id: string) => void;
-  setScopekind: (kind: 'server' | 'dm') => void;
+  setScopekind: (kind: 'server' | 'dm' | 'friends') => void;
   setServerId: (id: string) => void;
   setDraft: (draft: string) => void;
   setThreadKey: (key: { key: string; idx: number } | null) => void;
@@ -21,6 +22,11 @@ interface AppContextType extends AppState {
   sendMessage: (text: string) => void;
   sendReply: (text: string) => void;
   setConvos: (convos: Record<string, Message[]>) => void;
+  /**
+   * Adiciona (se ainda não existir, sem duplicar) um amigo real aos contatos de DM
+   * mock e navega pra conversa com ele — usado pelo botão "Mensagem" do FriendsPanel.
+   */
+  startDirectMessage: (friend: { id: string; username: string }) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -54,10 +60,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     mobTab: 'conversas',
     mobScreen: 'list',
     convos: INITIAL_CONVOS,
+    dmContacts: DMS,
   });
 
   const realChannelId = getRealChannelId(state.activeId);
   const chat = useChat(realChannelId ?? '');
+
+  // Estabelece a conexão SignalR assim que o app carrega (usuário já autenticado —
+  // AppProvider só monta depois do AuthGate), independente de qual scope o usuário
+  // está navegando. Sem isso, a conexão só abriria via useChat/joinChannel quando um
+  // canal real fosse aberto — e como o app começa em modo DM (mock), presença e
+  // eventos de amigos poderiam nunca funcionar. ensureConnected() é idempotente
+  // (reusa a conexão/promise em andamento), então chamar de novo depois via
+  // joinChannel é seguro.
+  useEffect(() => {
+    ensureConnected().catch((err) => console.error('Falha ao conectar ao SignalR', err));
+  }, []);
 
   // Busca os servidores do usuário ao montar, depois os canais de cada um (N+1,
   // aceitável no volume esperado). rooms fica sempre [] — sem presença de voz via
@@ -202,6 +220,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     sendMessage,
     sendReply,
     setConvos: (convos) => setState((prev) => ({ ...prev, convos })),
+    startDirectMessage: (friend) =>
+      setState((prev) => {
+        const exists = prev.dmContacts.some((d) => d.id === friend.id);
+        const dmContacts: DirectMessage[] = exists
+          ? prev.dmContacts
+          : [{ id: friend.id, name: friend.username, unread: 0 }, ...prev.dmContacts];
+
+        return {
+          ...prev,
+          dmContacts,
+          scopeKind: 'dm',
+          activeId: `dm/${friend.id}`,
+          threadKey: null,
+        };
+      }),
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
