@@ -21,4 +21,7 @@ public interface IFriendService
     Task<IEnumerable<Guid>> GetFriendIdsAsync(Guid userId);
 
     Task<FriendRequestError?> RemoveFriendAsync(Guid userId, Guid friendId);
+
+    /// <summary>Usado pelo ConversationService pra checar se dois usuários podem abrir/enviar DM.</summary>
+    Task<bool> AreFriendsAsync(Guid userIdA, Guid userIdB);
 }

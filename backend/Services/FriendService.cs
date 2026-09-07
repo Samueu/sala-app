@@ -138,6 +138,9 @@ public class FriendService(
 
     public Task<IEnumerable<Guid>> GetFriendIdsAsync(Guid userId) => repository.GetFriendIdsAsync(userId);
 
+    public async Task<bool> AreFriendsAsync(Guid userIdA, Guid userIdB) =>
+        await repository.GetAcceptedBetweenAsync(userIdA, userIdB) is not null;
+
     public async Task<FriendRequestError?> RemoveFriendAsync(Guid userId, Guid friendId)
     {
         var request = await repository.GetAcceptedBetweenAsync(userId, friendId);
