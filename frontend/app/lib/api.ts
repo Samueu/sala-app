@@ -66,6 +66,27 @@ export async function postJson<T>(path: string, body?: unknown): Promise<T> {
   return response.json();
 }
 
+/**
+ * PATCH autenticado com corpo JSON. `path` é relativo. Mesma estrutura de postJson,
+ * só troca o método.
+ */
+export async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(await authHeaders()),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(await errorMessage(response, path));
+  }
+
+  return response.json();
+}
+
 /** DELETE autenticado. `path` é relativo. Lança se a resposta não for 2xx. */
 export async function deleteRequest(path: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}${path}`, {

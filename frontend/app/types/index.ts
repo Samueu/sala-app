@@ -60,6 +60,14 @@ export interface Friend {
   friendsSince: string;
 }
 
+/** Espelha o User do backend (Models/User.cs) serializado — GET/PATCH /api/users/me. */
+export interface UserProfile {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
 export interface AppState {
   /** Servidores reais do usuário autenticado (GET /api/servers), buscados via app/lib/servers.ts. */
   servers: Record<string, Server>;

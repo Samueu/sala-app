@@ -33,4 +33,26 @@ public class UserRepository(AppDbContext context) : IUserRepository
         await context.SaveChangesAsync();
         return existing;
     }
+
+    public async Task<User?> UpdateProfileAsync(Guid id, string? username, string? avatarUrl)
+    {
+        var existing = await context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (existing is null)
+        {
+            return null;
+        }
+
+        if (username is not null)
+        {
+            existing.Username = username;
+        }
+
+        if (avatarUrl is not null)
+        {
+            existing.AvatarUrl = avatarUrl;
+        }
+
+        await context.SaveChangesAsync();
+        return existing;
+    }
 }

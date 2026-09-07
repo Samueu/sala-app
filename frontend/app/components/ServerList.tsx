@@ -1,10 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { useApp } from '@/app/lib/context';
+import { useProfile } from '@/app/lib/useProfile';
+import { initials, tint } from '@/app/lib/data';
+import ProfileModal from '@/app/components/ProfileModal';
 
 export default function ServerList() {
   const app = useApp();
   const SERVERS = app.servers;
+  const { profile, updateProfile } = useProfile();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const displayName = profile?.username ?? 'Você';
 
   const handleServerClick = (serverId: string) => {
     const server = SERVERS[serverId];
@@ -78,6 +85,19 @@ export default function ServerList() {
       >
         <i className="ph ph-chat-teardrop text-base"></i>
       </div>
+
+      <div
+        onClick={() => setProfileOpen(true)}
+        title={displayName}
+        className="mt-auto w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-neutral-900 cursor-pointer ring-1 ring-neutral-800 hover:ring-accent-500 transition-all"
+        style={{ backgroundColor: tint(displayName) }}
+      >
+        {initials(displayName)}
+      </div>
+
+      {profileOpen && (
+        <ProfileModal profile={profile} onUpdate={updateProfile} onClose={() => setProfileOpen(false)} />
+      )}
     </div>
   );
 }

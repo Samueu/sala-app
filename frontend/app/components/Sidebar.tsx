@@ -99,17 +99,6 @@ export default function Sidebar() {
           <div className="flex flex-col gap-0.5">{items}</div>
         </div>
       </div>
-
-      <div className="flex items-center gap-3 p-4 border-t border-neutral-800">
-        <div className="w-6.5 h-6.5 flex-shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-neutral-900 bg-accent-400">
-          VC
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm">Você</div>
-          <div className="text-xs text-neutral-600">{app.voiceRoom ? 'em chamada' : 'disponível'}</div>
-        </div>
-        <i className="ph ph-gear text-base text-neutral-600 cursor-pointer"></i>
-      </div>
     </aside>
   );
 }
