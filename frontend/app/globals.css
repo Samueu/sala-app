@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #161826;
+  color: #e9e9ed;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f424d;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+a {
+  color: #d2cefd;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #e7e5fe;
+}
+
+input, button {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid #9184d9;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(145, 132, 217, 0.3);
+}

@@ -1,0 +1,28 @@
+# Ajuste "app" pro nome real depois de `fly apps create`/`fly launch`, e
+# "primary_region" se quiser outra região (veja `fly platform regions`).
+app = "sala-app-api"
+primary_region = "gru"
+
+[build]
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
