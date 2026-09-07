@@ -112,6 +112,19 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Aplica migrations pendentes automaticamente ao iniciar — sem isso, um deploy só leva
+// o código novo, mas o schema do banco (novas tabelas/colunas) fica pra trás até
+// alguém lembrar de rodar "dotnet ef database update" manualmente contra o banco de
+// produção (foi exatamente o que aconteceu com as tabelas Conversations/DirectMessages
+// — o deploy funcionou, mas as rotas de conversa quebravam com 500 por falta das
+// tabelas). Só 1 réplica configurada (railway.json), então não há corrida entre
+// múltiplas instâncias migrando ao mesmo tempo.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
