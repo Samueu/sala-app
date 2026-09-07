@@ -98,3 +98,48 @@ export function onReceiveMessage(handler: (message: ChatMessage) => void): () =>
   conn.on('ReceiveMessage', handler);
   return () => conn.off('ReceiveMessage', handler);
 }
+
+/**
+ * Espelha FriendRequestDto do backend (Dtos/FriendRequestDto.cs) — payload de
+ * FriendRequestReceived e FriendRequestAccepted.
+ */
+export interface FriendRequestPayload {
+  id: string;
+  senderId: string;
+  senderUsername: string | null;
+  senderAvatarUrl: string | null;
+  receiverId: string;
+  receiverUsername: string | null;
+  receiverAvatarUrl: string | null;
+  status: 'Pending' | 'Accepted' | 'Rejected';
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Espelha FriendStatusChangedDto do backend — payload de FriendStatusChanged. */
+export interface FriendStatusPayload {
+  userId: string;
+  isOnline: boolean;
+}
+
+// Os três eventos de amizade chegam pela mesma conexão/hub do chat (ChatHub foi
+// estendido no backend em vez de criar um hub separado) — mesmo padrão de
+// on/off do onReceiveMessage acima.
+
+export function onFriendRequestReceived(handler: (request: FriendRequestPayload) => void): () => void {
+  const conn = getChatConnection();
+  conn.on('FriendRequestReceived', handler);
+  return () => conn.off('FriendRequestReceived', handler);
+}
+
+export function onFriendRequestAccepted(handler: (request: FriendRequestPayload) => void): () => void {
+  const conn = getChatConnection();
+  conn.on('FriendRequestAccepted', handler);
+  return () => conn.off('FriendRequestAccepted', handler);
+}
+
+export function onFriendStatusChanged(handler: (status: FriendStatusPayload) => void): () => void {
+  const conn = getChatConnection();
+  conn.on('FriendStatusChanged', handler);
+  return () => conn.off('FriendStatusChanged', handler);
+}

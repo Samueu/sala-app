@@ -35,11 +35,44 @@ export interface DirectMessage {
   unread: number;
 }
 
+export type FriendRequestStatus = 'Pending' | 'Accepted' | 'Rejected';
+
+/** Espelha FriendRequestDto do backend (Dtos/FriendRequestDto.cs). */
+export interface FriendRequestItem {
+  id: string;
+  senderId: string;
+  senderUsername: string | null;
+  senderAvatarUrl: string | null;
+  receiverId: string;
+  receiverUsername: string | null;
+  receiverAvatarUrl: string | null;
+  status: FriendRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Espelha FriendDto do backend (Dtos/FriendDto.cs) — um item de GET /api/friends. */
+export interface Friend {
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  isOnline: boolean;
+  friendsSince: string;
+}
+
+/** Espelha o User do backend (Models/User.cs) serializado — GET/PATCH /api/users/me. */
+export interface UserProfile {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
 export interface AppState {
   /** Servidores reais do usuário autenticado (GET /api/servers), buscados via app/lib/servers.ts. */
   servers: Record<string, Server>;
   serverId: string;
-  scopeKind: 'server' | 'dm';
+  scopeKind: 'server' | 'dm' | 'friends';
   activeId: string;
   draft: string;
   threadKey: { key: string; idx: number } | null;
@@ -51,4 +84,10 @@ export interface AppState {
   mobTab: 'conversas' | 'voz' | 'perfil';
   mobScreen: 'list' | 'chat' | 'thread' | 'voice' | 'profile';
   convos: Record<string, Message[]>;
+  /**
+   * Contatos de DM (mock, sem backend real). Começa com os 3 mocks de app/lib/data.ts
+   * e ganha entradas quando o usuário clica "Mensagem" num amigo real (ver
+   * startDirectMessage em app/lib/context.tsx).
+   */
+  dmContacts: DirectMessage[];
 }

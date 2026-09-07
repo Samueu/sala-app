@@ -5,6 +5,7 @@ import { useApp } from '@/app/lib/context';
 import ServerList from '@/app/components/ServerList';
 import Sidebar from '@/app/components/Sidebar';
 import ChatArea from '@/app/components/ChatArea';
+import FriendsPanel from '@/app/components/FriendsPanel';
 import ThreadPanel from '@/app/components/ThreadPanel';
 import VoicePanel from '@/app/components/VoicePanel';
 
@@ -37,8 +38,16 @@ export default function Home() {
     <div className="h-screen w-screen overflow-hidden bg-bg">
       <div className="grid gap-0 h-full" style={{ gridTemplateColumns: '56px 216px minmax(0,1fr)' + threadCol + ' 264px' }}>
         <ServerList />
-        <Sidebar />
-        <ChatArea />
+        {app.scopeKind === 'friends' ? (
+          <div style={{ gridColumn: 'span 2' }} className="h-full min-w-0 min-h-0">
+            <FriendsPanel />
+          </div>
+        ) : (
+          <>
+            <Sidebar />
+            <ChatArea />
+          </>
+        )}
         {showThreadPanel && <ThreadPanel />}
         <VoicePanel />
       </div>

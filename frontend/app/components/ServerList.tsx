@@ -1,11 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { useApp } from '@/app/lib/context';
-import { DMS } from '@/app/lib/data';
+import { useProfile } from '@/app/lib/useProfile';
+import { initials, tint } from '@/app/lib/data';
+import ProfileModal from '@/app/components/ProfileModal';
 
 export default function ServerList() {
   const app = useApp();
   const SERVERS = app.servers;
+  const { profile, updateProfile } = useProfile();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const displayName = profile?.username ?? 'Você';
 
   const handleServerClick = (serverId: string) => {
     const server = SERVERS[serverId];
@@ -16,7 +22,15 @@ export default function ServerList() {
 
   const handleDirectsClick = () => {
     app.setScopekind('dm');
-    app.setActiveId(`dm/${DMS[0].id}`);
+    app.setActiveId(`dm/${app.dmContacts[0].id}`);
+  };
+
+  // 'friends' não muda activeId (o FriendsPanel não usa isso pra nada) — setActiveId
+  // é quem normalmente zera threadKey nos outros handlers, então aqui precisa zerar
+  // explicitamente, senão o ThreadPanel de uma thread antiga fica "vazando" visível.
+  const handleFriendsClick = () => {
+    app.setScopekind('friends');
+    app.setThreadKey(null);
   };
 
   return (
@@ -49,6 +63,18 @@ export default function ServerList() {
       <div className="w-4 h-px my-2 bg-neutral-800"></div>
 
       <div
+        onClick={handleFriendsClick}
+        title="Amigos"
+        className={`w-9 h-9 rounded-md flex items-center justify-center cursor-pointer transition-all ${
+          app.scopeKind === 'friends'
+            ? 'bg-accent-900 text-accent-200 ring-1 ring-accent-700'
+            : 'bg-neutral-900 text-neutral-500 ring-1 ring-neutral-800 hover:ring-accent-500'
+        }`}
+      >
+        <i className="ph ph-users text-base"></i>
+      </div>
+
+      <div
         onClick={handleDirectsClick}
         title="Mensagens diretas"
         className={`w-9 h-9 rounded-md flex items-center justify-center cursor-pointer transition-all ${
@@ -59,6 +85,19 @@ export default function ServerList() {
       >
         <i className="ph ph-chat-teardrop text-base"></i>
       </div>
+
+      <div
+        onClick={() => setProfileOpen(true)}
+        title={displayName}
+        className="mt-auto w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-neutral-900 cursor-pointer ring-1 ring-neutral-800 hover:ring-accent-500 transition-all"
+        style={{ backgroundColor: tint(displayName) }}
+      >
+        {initials(displayName)}
+      </div>
+
+      {profileOpen && (
+        <ProfileModal profile={profile} onUpdate={updateProfile} onClose={() => setProfileOpen(false)} />
+      )}
     </div>
   );
 }

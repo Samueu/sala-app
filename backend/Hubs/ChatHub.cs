@@ -7,9 +7,42 @@ using SalaApp.Api.Services;
 namespace SalaApp.Api.Hubs;
 
 [Authorize]
-public class ChatHub(IChannelService channelService, IMessageService messageService, IUserService userService)
+public class ChatHub(
+    IChannelService channelService,
+    IMessageService messageService,
+    IUserService userService,
+    IPresenceTracker presenceTracker,
+    IFriendService friendService)
     : Hub
 {
+    public override async Task OnConnectedAsync()
+    {
+        var userId = GetUserId();
+        if (presenceTracker.AddConnection(userId, Context.ConnectionId))
+        {
+            // Primeira conexão desse usuário: ele estava offline, agora está online.
+            var friendIds = await friendService.GetFriendIdsAsync(userId);
+            await Clients.Users(friendIds.Select(id => id.ToString()).ToList())
+                .SendAsync("FriendStatusChanged", new FriendStatusChangedDto(userId, true));
+        }
+
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        var userId = GetUserId();
+        if (presenceTracker.RemoveConnection(userId, Context.ConnectionId))
+        {
+            // Essa era a última conexão desse usuário: ficou offline.
+            var friendIds = await friendService.GetFriendIdsAsync(userId);
+            await Clients.Users(friendIds.Select(id => id.ToString()).ToList())
+                .SendAsync("FriendStatusChanged", new FriendStatusChangedDto(userId, false));
+        }
+
+        await base.OnDisconnectedAsync(exception);
+    }
+
     public async Task JoinChannel(Guid channelId)
     {
         var userId = GetUserId();

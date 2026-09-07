@@ -97,6 +97,40 @@ await connection.invoke("LeaveChannel", channelId);
 servidor dono do canal — senão o Hub lança `HubException`. Cada mensagem é gravada em `Messages` antes de
 ser distribuída (evento `ReceiveMessage`) pra todo mundo no grupo `channel:{channelId}`.
 
+## Amizades
+
+`Controllers/FriendsController.cs` (`/api/friends`, tudo `[Authorize]`):
+
+| Rota | O que faz |
+|---|---|
+| `POST /api/friends/requests` | Envia solicitação — corpo `{ "receiverId": "<guid>" }` **ou** `{ "username": "<nome>" }` (exatamente um). |
+| `GET /api/friends/requests/pending` | Solicitações pendentes recebidas pelo usuário autenticado. |
+| `GET /api/friends/requests/sent` | Solicitações pendentes enviadas pelo usuário autenticado. |
+| `POST /api/friends/requests/{id}/accept` | Aceita (só quem recebeu pode). |
+| `POST /api/friends/requests/{id}/reject` | Recusa (só quem recebeu pode; mantém a linha como histórico). |
+| `GET /api/friends` | Lista de amigos (`Status=Accepted`), com `isOnline` vindo do rastreador de presença do `ChatHub`. |
+| `DELETE /api/friends/{friendId}` | Desfaz a amizade (remove a linha). |
+
+Regras: não dá pra mandar solicitação pra si mesmo, nem duplicar uma pendente já existente na mesma
+direção (índice único filtrado por `Status=Pending` em `AppDbContext`). Se os dois usuários já tinham
+mandado solicitação um pro outro ao mesmo tempo, a segunda chamada aceita a primeira automaticamente em
+vez de criar uma linha duplicada.
+
+Eventos emitidos pelo `ChatHub` (mesma conexão SignalR do chat, não é um hub separado):
+
+- `FriendRequestReceived` — só pro destinatário, quando alguém manda uma solicitação.
+- `FriendRequestAccepted` — pros dois lados, quando uma solicitação é aceita (inclusive no caso de
+  auto-accept mútuo acima).
+- `FriendStatusChanged` — pros amigos de um usuário, quando ele fica online (primeira conexão SignalR
+  daquele usuário) ou offline (última conexão cai). O rastreamento de presença (`PresenceTracker`) é **em
+  memória, por instância do processo** — não escala pra múltiplas instâncias do backend sem um backplane
+  (Redis etc); com uma instância só (como no deploy atual do Fly.io) funciona normalmente.
+
+`Clients.User(id)` (usado pros dois primeiros eventos) depende de `SupabaseUserIdProvider`
+(`Auth/SupabaseUserIdProvider.cs`), registrado em `Program.cs`, que mapeia a claim `sub` do Supabase pro
+identificador de usuário do SignalR — sem isso o SignalR usaria `ClaimTypes.NameIdentifier`, que não
+existe nas claims do Supabase.
+
 ## Voz (LiveKit)
 
 `GET /api/voice/token?channelId={guid}` gera um token de acesso do LiveKit pro usuário autenticado entrar

@@ -1,11 +1,12 @@
 'use client';
 
 import { useApp } from '@/app/lib/context';
-import { DMS, initials, tint } from '@/app/lib/data';
+import { initials, tint } from '@/app/lib/data';
 
 export default function ChatArea() {
   const app = useApp();
   const SERVERS = app.servers;
+  const DMS = app.dmContacts;
 
   let conversation: any = {};
   let icon = '';

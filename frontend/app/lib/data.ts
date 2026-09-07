@@ -20,6 +20,8 @@ export const initials = (name: string): string => {
 export const formatTime = (date: Date): string =>
   `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
+export const formatDate = (isoDate: string): string => new Date(isoDate).toLocaleDateString('pt-BR');
+
 // Servidores/canais reais agora vêm da API (app/lib/servers.ts, via app.servers no
 // contexto) — SERVERS mock foi removido daqui. DMs continuam mock: o backend não
 // tem conceito de mensagem direta hoje.
