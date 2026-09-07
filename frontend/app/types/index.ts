@@ -36,6 +36,8 @@ export interface DirectMessage {
 }
 
 export interface AppState {
+  /** Servidores reais do usuário autenticado (GET /api/servers), buscados via app/lib/servers.ts. */
+  servers: Record<string, Server>;
   serverId: string;
   scopeKind: 'server' | 'dm';
   activeId: string;

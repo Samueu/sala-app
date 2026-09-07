@@ -1,13 +1,15 @@
 'use client';
 
 import { useApp } from '@/app/lib/context';
-import { SERVERS, DMS } from '@/app/lib/data';
+import { DMS } from '@/app/lib/data';
 
 export default function ServerList() {
   const app = useApp();
+  const SERVERS = app.servers;
 
   const handleServerClick = (serverId: string) => {
     const server = SERVERS[serverId];
+    app.setServerId(serverId);
     app.setScopekind('server');
     app.setActiveId(`${serverId}/${server.channels[0].id}`);
   };

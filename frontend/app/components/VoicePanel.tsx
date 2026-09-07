@@ -1,12 +1,13 @@
 'use client';
 
 import { useApp } from '@/app/lib/context';
-import { SERVERS, initials, tint } from '@/app/lib/data';
+import { initials, tint } from '@/app/lib/data';
 
 export default function VoicePanel() {
   const app = useApp();
-  const server = SERVERS[app.serverId];
-  const rooms = app.scopeKind === 'dm' ? Object.values(SERVERS).flatMap((s) => s.rooms) : server.rooms;
+  const server = app.servers[app.serverId];
+  const rooms =
+    app.scopeKind === 'dm' ? Object.values(app.servers).flatMap((s) => s.rooms) : server.rooms;
 
   const voiceRoom = app.voiceRoom ? rooms.find((r) => r.id === app.voiceRoom) : null;
   const voicePeople = voiceRoom ? voiceRoom.people : [];

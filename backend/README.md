@@ -55,10 +55,25 @@ padrão) — está em **Project Settings → API → Project URL** no painel do 
 dotnet user-secrets set "Supabase:Url" "https://<project-ref>.supabase.co"
 ```
 
-Rotas com `[Authorize]` (hoje: tudo em `ServersController`, `GET /api/users/me`, o `ChatHub`,
-`GET /api/voice/token` e `POST /api/attachments`) exigem `Authorization: Bearer <token>`, onde `<token>`
-é o `access_token` de uma sessão logada no frontend (`supabase.auth.getSession()`). Sem `Supabase:Url`
-configurado, ou com um token inválido/expirado, a API responde `401 Unauthorized`.
+Rotas com `[Authorize]` (hoje: tudo em `ServersController`/`ChannelsController`/`MessagesController`,
+`GET /api/users/me`, o `ChatHub`, `GET /api/voice/token` e `POST /api/attachments`) exigem
+`Authorization: Bearer <token>`, onde `<token>` é o `access_token` de uma sessão logada no frontend
+(`supabase.auth.getSession()`). Sem `Supabase:Url` configurado, ou com um token inválido/expirado, a API
+responde `401 Unauthorized`.
+
+## Servidores, canais e mensagens (REST)
+
+- `GET /api/servers` — só os servidores em que o usuário autenticado é `ServerMember` (não todos os do
+  banco). `POST /api/servers` cria o servidor com o dono vindo do token (não do corpo) e já insere a
+  membership do dono (`Role=Owner`) — sem isso ele não apareceria no próprio `GET /api/servers` depois.
+- `GET /api/servers/{id}/channels` — canais de um servidor; `404` se o servidor não existe ou o usuário
+  não é membro.
+- `GET /api/channels/{id}/messages` — histórico do canal (últimas 50 mensagens-raiz + todas as respostas
+  delas, mais antiga primeiro, mesmo formato do `MessageDto` usado no `ChatHub`); mesma regra de acesso
+  (membership) das outras rotas de canal. Sem paginação por enquanto.
+
+Não existe endpoint pra criar canal ou entrar num servidor (convite/join) ainda — pra testar de ponta a
+ponta, insira manualmente uma linha `ServerMember` no Postgres pro usuário de teste.
 
 ## Chat em tempo real (SignalR)
 

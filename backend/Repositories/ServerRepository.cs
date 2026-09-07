@@ -9,6 +9,11 @@ public class ServerRepository(AppDbContext context) : IServerRepository
     public async Task<IEnumerable<Server>> GetAllAsync() =>
         await context.Servers.AsNoTracking().ToListAsync();
 
+    public async Task<IEnumerable<Server>> GetForUserAsync(Guid userId) =>
+        await context.Servers.AsNoTracking()
+            .Where(s => s.Members.Any(m => m.UserId == userId))
+            .ToListAsync();
+
     public async Task<Server?> GetByIdAsync(Guid id) =>
         await context.Servers.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
 

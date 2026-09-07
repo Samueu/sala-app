@@ -17,4 +17,7 @@ public class MessageService(IMessageRepository repository) : IMessageService
 
         return repository.AddAsync(message);
     }
+
+    public Task<IEnumerable<Message>> GetRecentAsync(Guid channelId, int take = 50) =>
+        repository.GetRecentForChannelAsync(channelId, take);
 }

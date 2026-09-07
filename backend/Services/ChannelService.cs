@@ -17,4 +17,10 @@ public class ChannelService(IChannelRepository channelRepository, IServerMemberR
         var isMember = await serverMemberRepository.IsMemberAsync(channel.ServerId, userId);
         return isMember ? channel : null;
     }
+
+    public async Task<IEnumerable<Channel>?> GetChannelsForServerAsync(Guid serverId, Guid userId)
+    {
+        var isMember = await serverMemberRepository.IsMemberAsync(serverId, userId);
+        return isMember ? await channelRepository.GetByServerIdAsync(serverId) : null;
+    }
 }

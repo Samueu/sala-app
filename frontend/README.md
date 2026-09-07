@@ -52,8 +52,10 @@ sala-app/
 │   │   ├── AuthScreen.tsx     # Tela de login/registro (e-mail + senha)
 │   │   └── AuthGate.tsx       # Mostra AuthScreen sem sessão, o app com sessão
 │   ├── lib/
-│   │   ├── context.tsx        # Context React para estado global (UI mock)
-│   │   ├── data.ts            # Dados iniciais (servidores, canais, etc)
+│   │   ├── context.tsx        # Estado global: servidores/canais/mensagens reais + DMs mock
+│   │   ├── data.ts            # DMs mock, TINTS/tint/initials/formatTime (SERVERS não é mais mock)
+│   │   ├── servers.ts         # Busca servidores/canais/mensagens reais na API e mapeia pros tipos da UI
+│   │   ├── api.ts             # fetchJson: GET autenticado genérico no backend
 │   │   ├── config.ts          # API_BASE_URL do backend
 │   │   ├── auth.ts            # setAccessTokenProvider/getAccessToken (alimentado pelo AuthContext)
 │   │   ├── supabaseClient.ts  # Client Supabase (browser only)
@@ -101,17 +103,16 @@ O projeto utiliza o design system **Nocturne** com paleta de cores dark:
 
 ## 📊 Dados
 
-O aplicativo vem pré-carregado com dados de exemplo:
-
-### Servidores
-- **Jogatina** (JG) - Servidor de jogos com canais de geral, partidas e clipes
-- **Grupo de estudos** (GE) - Servidor de estudos com canais de avisos e dúvidas
-
-### Mensagens Diretas
-- Ana, Iago, Dora
-
-### Salas de Voz
-- Sala principal, Duo, Só ouvindo, Mesa de estudo
+- **Servidores, canais e mensagens**: reais, vindos do backend (`GET /api/servers`,
+  `GET /api/servers/{id}/channels`, `GET /api/channels/{id}/messages` + `ChatHub` via SignalR pra
+  tempo real). Só aparecem servidores em que o usuário logado é membro — não existe UI de
+  criar/entrar em servidor ainda, então pra testar é preciso inserir uma linha `Server` +
+  `ServerMember` direto no Postgres pro usuário de teste.
+- **Mensagens diretas** (Ana, Iago, Dora) e **badges de não-lido**: continuam mock
+  (`app/lib/data.ts`) — o backend não tem esses conceitos ainda.
+- **Salas de voz** (lista de "quem está na sala" antes de entrar): mock/vazio pros servidores reais —
+  ver `app/components/VoiceChannel.tsx` pra sala de voz de verdade (LiveKit), que mostra participantes
+  reais depois que você entra.
 
 ## 💡 Como Usar
 
@@ -131,7 +132,8 @@ A aplicação é responsiva:
 ## 🔧 Customização
 
 ### Adicionar novo servidor
-Edite `app/lib/data.ts` e adicione um novo servidor ao objeto `SERVERS`.
+Servidores agora vêm da API — crie via `POST /api/servers` (autenticado) no backend, não editando
+`data.ts`. Pra adicionar uma DM mock, edite `DMS`/`INITIAL_CONVOS` em `app/lib/data.ts`.
 
 ### Customizar cores
 Edite o arquivo `tailwind.config.js` para alterar o design system.
@@ -199,10 +201,10 @@ cadastro mostra um aviso pra conferir a caixa de entrada).
 
 ## 📝 Notas
 
-- Este é um projeto de demonstração com dados fictícios
-- As mensagens não são persistidas (são resetadas ao recarregar) — exceto via `useChat`, que fala com o
-  backend/Postgres de verdade, mas ainda não está ligado à UI de chat existente
-- A funcionalidade de voz é apenas visual neste MVP
+- Servidores/canais/mensagens são reais e persistem no Postgres (via backend); DMs e badges de
+  não-lido continuam mock/fictícios (sem equivalente no backend ainda)
+- Salas de voz: a lista de participantes antes de entrar é mock (sem presença via REST ainda), mas
+  `VoiceChannel.tsx` conecta numa sala LiveKit real com participantes reais
 - Mobile view ainda está em desenvolvimento
 
 ## 📄 Licença
