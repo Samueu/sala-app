@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Tokens;
@@ -29,7 +30,15 @@ builder.Services.AddScoped<IChannelService, ChannelService>();
 builder.Services.AddScoped<IServerMemberRepository, ServerMemberRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IFriendRequestRepository, FriendRequestRepository>();
+builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddHttpClient<ISupabaseStorageService, SupabaseStorageService>();
+
+// Singletons: presença é estado em memória compartilhado entre todas as conexões do
+// processo; o provider de user id é sem estado. Ambos precisam viver além do escopo de
+// uma única request/conexão.
+builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+builder.Services.AddSingleton<IUserIdProvider, SupabaseUserIdProvider>();
 
 builder.Services.AddSignalR();
 

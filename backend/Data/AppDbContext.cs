@@ -15,6 +15,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<ServerMember> ServerMembers => Set<ServerMember>();
 
+    public DbSet<FriendRequest> FriendRequests => Set<FriendRequest>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -72,5 +74,35 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<ServerMember>()
             .HasIndex(sm => new { sm.ServerId, sm.UserId })
             .IsUnique();
+
+        // FriendRequest -> Sender / Receiver (User): dois FKs pra mesma tabela, então
+        // WithMany() sem propriedade de coleção nomeada (mesmo padrão de Server.Owner) pra
+        // evitar ambiguidade. Restrict nos dois pra não deixar apagar um usuário que ainda
+        // tem solicitações de amizade pendentes ou aceitas.
+        modelBuilder.Entity<FriendRequest>()
+            .HasOne(fr => fr.Sender)
+            .WithMany()
+            .HasForeignKey(fr => fr.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FriendRequest>()
+            .HasOne(fr => fr.Receiver)
+            .WithMany()
+            .HasForeignKey(fr => fr.ReceiverId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Não permite duas solicitações Pending entre o mesmo par (na mesma direção).
+        // Filtrado por Status = 0 (Pending) pra permitir reenviar depois de um Reject.
+        modelBuilder.Entity<FriendRequest>()
+            .HasIndex(fr => new { fr.SenderId, fr.ReceiverId })
+            .IsUnique()
+            .HasFilter("\"Status\" = 0");
+
+        // Índices auxiliares pra listar pedidos recebidos/enviados por status.
+        modelBuilder.Entity<FriendRequest>()
+            .HasIndex(fr => new { fr.ReceiverId, fr.Status });
+
+        modelBuilder.Entity<FriendRequest>()
+            .HasIndex(fr => new { fr.SenderId, fr.Status });
     }
 }

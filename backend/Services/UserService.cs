@@ -7,6 +7,8 @@ public class UserService(IUserRepository repository) : IUserService
 {
     public Task<User?> GetByIdAsync(Guid id) => repository.GetByIdAsync(id);
 
+    public Task<User?> GetByUsernameAsync(string username) => repository.GetByUsernameAsync(username);
+
     public async Task<User> EnsureProfileAsync(Guid id, string username, string? avatarUrl)
     {
         var existing = await repository.GetByIdAsync(id);
